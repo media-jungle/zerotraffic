@@ -240,6 +240,7 @@ const TILES = [
 
 const STATE = {};   // "cat:name" -> 조회 결과
 const ASTATE = {};  // 공항 code -> 조회 결과
+const ESTATE = {};  // 전시장 venue -> 행사 정보 HTML
 
 function cssId(n){ return encodeURIComponent(n).replace(/[%.]/g,'_'); }
 function kstHour(){ return new Date(Date.now()+9*3600*1000).getUTCHours(); }
@@ -301,6 +302,28 @@ function renderCat(key){
      ${c.note ? `<div class="banner" style="background:#fdf6e3;color:#8a6d1f">💡 ${c.note}</div>` : ''}
      <div class="hint">👆 카드를 <b>누르면</b> 지금 진입로 혼잡도와 예상 진입시간이 표시됩니다.</div>
      <div class="grid">${cards}</div>`;
+  if(key==='expo') c.stores.forEach(s=>loadEvents(s.name));
+}
+
+async function loadEvents(name){
+  if(ESTATE[name]!==undefined){ updateCard('expo', CATS.expo.stores.find(x=>x.name===name)); return; }
+  let html='';
+  try{
+    const res = await fetch(`/.netlify/functions/events?venue=${encodeURIComponent(name)}`);
+    const d = await res.json();
+    if(d.count>0){
+      const names = (d.events||[]).slice(0,2).map(e=>e.title).join(' · ');
+      html = `<div style="font-size:12px;color:#c0392b;margin:2px 0 6px">📅 오늘 행사 <b>${d.count}건</b> — 혼잡 예상${names?`<br><span style="color:#a0a4ab">${names}${d.count>2?' 외':''}</span>`:''}</div>`;
+    } else if(d.count===0){
+      html = `<div style="font-size:12px;color:#1b8a54;margin:2px 0 6px">📅 오늘 행사 없음 — 한산 예상</div>`;
+    } else {
+      html = `<div style="font-size:11px;color:#c98500;margin:2px 0 6px">📅 행사 정보: ${d.reason==='no-key'?'공공데이터 키 등록 후 표시':'일시적 오류'}</div>`;
+    }
+  }catch(e){
+    html = `<div style="font-size:11px;color:#c98500;margin:2px 0 6px">📅 행사 정보는 배포 후 표시됩니다</div>`;
+  }
+  ESTATE[name]=html;
+  updateCard('expo', CATS.expo.stores.find(x=>x.name===name));
 }
 
 function cardHTML(key,s){
@@ -315,7 +338,8 @@ function cardHTML(key,s){
     const note = r.demo ? `<div style="font-size:11px;color:#c98500;margin-top:2px">${r.reason==='local'?'※ 로컬 미리보기 — 넷리파이 배포 후 실시간 값이 표시됩니다':'※ 임시값 ('+(r.reason||'키 확인')+')'}</div>` : '';
     line = `<div class="lb" style="color:${color}">${r.label}</div><div class="eta">${eta}</div>${note}`;
   }
-  return {color, inner:`<div class="nm">${s.name}<span class="sd">${s.sido}</span></div>${line}<div class="ad">${s.addr}</div>`};
+  const ev = key==='expo' ? (ESTATE[s.name]!==undefined ? ESTATE[s.name] : '<div style="font-size:12px;color:#a0a4ab;margin:2px 0 6px">📅 행사 확인 중…</div>') : '';
+  return {color, inner:`<div class="nm">${s.name}<span class="sd">${s.sido}</span></div>${ev}${line}<div class="ad">${s.addr}</div>`};
 }
 
 async function loadStore(key,name){

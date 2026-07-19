@@ -1,0 +1,7 @@
+# 넷리파이 설정
+[build]
+  publish = "public"                 # 방문자에게 보여줄 정적 폴더
+  functions = "netlify/functions"    # 서버리스 함수 폴더
+
+# 화면은 매장을 누를 때 /.netlify/functions/store?name=... 를 직접 호출한다.
+# (스케줄 자동 갱신은 사용하지 않으므로 별도 리다이렉트/크론 없음)

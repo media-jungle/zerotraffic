@@ -1,0 +1,6 @@
+{
+  "name": "zerotraffic-app",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "제로트래픽 — 대형시설 진입로·주차 혼잡도 통합판 (Netlify, 외부 의존성 없음)"
+}

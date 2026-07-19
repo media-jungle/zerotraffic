@@ -5,6 +5,7 @@ import {
   CATEGORIES, CONGESTION, QUEUE_EST_MIN,
   offsetPoint, nowKST, isBusinessHoursKST,
 } from "./_shared.mjs";
+import { recordObservation, zeroTimeToday } from "./_stats.mjs";
 
 const CACHE_MS = 10 * 60 * 1000; // 10분
 const GEOCODE_URL = "https://maps.apigw.ntruss.com/map-geocode/v2/geocode";
@@ -99,8 +100,9 @@ export default async (req) => {
 
   // 1) 카테고리별 영업시간 외에는 네이버 호출 안 함 → 비용 0
   if (!isBusinessHoursKST(category.hours)) {
+    const zerotime = await zeroTimeToday(cat, name, category.hours[1]);
     return json({ cat, name: s.name, sido: s.sido, addr: s.addr, closed: true,
-      hours: category.hours, updated: nowKST() });
+      hours: category.hours, zerotime, updated: nowKST() });
   }
 
   // 2) 메모리 캐시(10분)
@@ -130,10 +132,16 @@ export default async (req) => {
 
     const [label, hex] = CONGESTION[cong] || ["알수없음", "#95a5a6"];
     const queue = QUEUE_EST_MIN[cong] || 0;
+
+    // 관측 기록(요일×시간대 학습) + 제로트래픽 예상 시각 조회 — 실패해도 본 응답엔 영향 없음
+    await recordObservation(cat, name, cong);
+    const zerotime = await zeroTimeToday(cat, name, category.hours[1]);
+
     const data = {
       cat, name: s.name, sido: s.sido, addr: s.addr, lat, lon,
       congestion: cong, label, hex,
       road_min: road, queue_min: queue, eta_min: Math.round(road + queue),
+      zerotime,
       updated: nowKST(),
     };
     liveCache.set(key, { ts: Date.now(), data });

@@ -326,17 +326,27 @@ async function loadEvents(name){
   updateCard('expo', CATS.expo.stores.find(x=>x.name===name));
 }
 
+function zerotimeHTML(r,key){
+  if(r && r.zerotime && r.zerotime.time){
+    return `<div style="font-size:12px;color:#1b8a54;margin:2px 0 4px">🅾️ 예상 제로트래픽 <b>${r.zerotime.time}</b> 이후 <small style="color:#a0a4ab">(최근 4주 같은 요일·표본 ${r.zerotime.samples})</small></div>`;
+  }
+  if(r && !r.loading && !r.demo && (key==='costco'||key==='traders')){
+    return `<div style="font-size:11px;color:#b3b7bd;margin:2px 0 4px">📊 제로트래픽 시간 학습 중</div>`;
+  }
+  return '';
+}
+
 function cardHTML(key,s){
   const r = STATE[key+':'+s.name];
   let color='#cfd3d8', line='<div class="tap">눌러서 혼잡도 확인 ›</div>';
   if(r && r.loading){ line='<div class="spin">확인 중…</div>'; }
-  else if(r && r.closed){ line='<div class="lb" style="color:#9aa0a6">영업 종료</div>'; }
+  else if(r && r.closed){ line='<div class="lb" style="color:#9aa0a6">영업 종료</div>'+zerotimeHTML(r,key); }
   else if(r && r.error){ line='<div class="lb" style="color:#c98500">잠시 후 다시 눌러 주세요</div>'; }
   else if(r && r.congestion!=null && COLORS[r.congestion]){
     color = COLORS[r.congestion][0];
     const eta = r.eta_min!=null ? `예상 진입 <b>${r.eta_min}분</b> <small>(도로 ${r.road_min}분+대기 ${r.queue_min}분)</small>` : '';
     const note = r.demo ? `<div style="font-size:11px;color:#c98500;margin-top:2px">${r.reason==='local'?'※ 로컬 미리보기 — 넷리파이 배포 후 실시간 값이 표시됩니다':'※ 임시값 ('+(r.reason||'키 확인')+')'}</div>` : '';
-    line = `<div class="lb" style="color:${color}">${r.label}</div><div class="eta">${eta}</div>${note}`;
+    line = `<div class="lb" style="color:${color}">${r.label}</div><div class="eta">${eta}</div>${zerotimeHTML(r,key)}${note}`;
   }
   const ev = key==='expo' ? (ESTATE[s.name]!==undefined ? ESTATE[s.name] : '<div style="font-size:12px;color:#a0a4ab;margin:2px 0 6px">📅 행사 확인 중…</div>') : '';
   return {color, inner:`<div class="nm">${s.name}<span class="sd">${s.sido}</span></div>${ev}${line}<div class="ad">${s.addr}</div>`};

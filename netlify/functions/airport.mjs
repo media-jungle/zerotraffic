@@ -125,19 +125,27 @@ async function fetchDepForecast(key, terminal) {
 }
 
 // ── 한국공항공사(김포·제주·김해): 주차장별 현황 ──
+// 2026 개편된 _GW API: 한 번 호출로 전국 14개 공항을 모두 반환 → aprKor로 필터.
+//   End Point: https://apis.data.go.kr/B551178/parking-realtime-status/info
+//   필드: aprKor(공항명) · parkingAirportCodeName(주차장명) · parkingFullSpace(전체) · parkingIstay(현재 주차)
+const KAC_APRKOR = { GMP: "김포국제공항", CJU: "제주국제공항", PUS: "김해국제공항" };
+
 async function fetchKAC(key, airportCode) {
-  const url = `https://openapi.airport.co.kr/service/rest/AirportParking/airportparkingRT?serviceKey=${encodeURIComponent(key)}&schAirportCode=${airportCode}&numOfRows=30&pageNo=1&_type=json`;
+  const url = `https://apis.data.go.kr/B551178/parking-realtime-status/info?serviceKey=${encodeURIComponent(key)}&numOfRows=100&pageNo=1&type=json`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("kac " + res.status);
   const d = await res.json();
   const items = d?.response?.body?.items;
   const arr = items ? [].concat(items.item || items) : [];
-  return arr.map((it) => {
-    const name = String(pick(it, ["parkingAirportCodeName", "parkingFloor", "parkingLotName", "aprKor"]) || "주차장");
-    const occupied = toInt(pick(it, ["parkingIstay", "parking", "occupied"]));
-    const total = toInt(pick(it, ["parkingFullSpace", "parkingarea", "total"]));
-    return normalizeLot(name, occupied, total);
-  });
+  const target = KAC_APRKOR[airportCode] || airportCode;
+  return arr
+    .filter((it) => String(it.aprKor || "") === target)
+    .map((it) => {
+      const name = String(it.parkingAirportCodeName || "주차장");
+      const occupied = toInt(it.parkingIstay);
+      const total = toInt(it.parkingFullSpace);
+      return normalizeLot(name, occupied, total);
+    });
 }
 
 export default async (req) => {
